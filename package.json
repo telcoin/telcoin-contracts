@@ -1,0 +1,34 @@
+{
+  "name": "telcoin-contracts",
+  "version": "0.1.0",
+  "description": "Protocol contracts that are part of the Telcoin application's blockchain infrastructure",
+  "main": "index.js",
+  "scripts": {
+    "test": "npx hardhat clean && npx hardhat coverage"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/telcoin/telcoin-contracts.git"
+  },
+  "keywords": [
+    "telcoin",
+    "sms",
+    "defi"
+  ],
+  "author": "Amir M. Shirif",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/telcoin/telcoin-contracts/issues"
+  },
+  "homepage": "https://github.com/telcoin/telcoin-contracts#readme",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@types/node": "^20.11.16",
+    "hardhat": "^2.19.5",
+    "solidity-coverage": "^0.8.6"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.1",
+    "@openzeppelin/contracts-upgradeable": "^5.0.1"
+  }
+}
