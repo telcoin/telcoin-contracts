@@ -1,8 +1,8 @@
 # telcoin-contracts
 
-![hardhat](https://img.shields.io/badge/hardhat-2.17.2-blue)
+![hardhat](https://img.shields.io/badge/hardhat-2.19.5-blue)
 ![node](https://img.shields.io/badge/node-v18.10.0-brightgreen.svg)
-![solidity](https://img.shields.io/badge/solidity-0.8.16-red)
+![solidity](https://img.shields.io/badge/solidity-0.8.23-red)
 ![coverage](https://img.shields.io/badge/coverage->80%25-yellowgreen)
 ![comments](https://img.shields.io/badge/comments->80%25-yellowgreen)
 
