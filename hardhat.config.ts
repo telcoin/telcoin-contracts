@@ -1,5 +1,6 @@
 import type { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
+import 'solidity-docgen';
 
 /** @type import('hardhat/config').HardhatUserConfig */
 const config: HardhatUserConfig = {
@@ -8,7 +9,7 @@ const config: HardhatUserConfig = {
     hardhat: {}
   },
   solidity: {
-    version: "0.8.23",
+    version: "0.8.24",
     settings: {
       optimizer: {
         enabled: true,

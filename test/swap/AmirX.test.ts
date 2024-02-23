@@ -1,9 +1,9 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { Stablecoin, MockFeeBuyback, TestToken, TestWallet, TestPlugin, TestAggregator } from "../../typechain-types";
+import { Stablecoin, MockAmirX, TestToken, TestWallet, TestPlugin, TestAggregator } from "../../typechain-types";
 
-describe("FeeBuyback", () => {
+describe("AmirX", () => {
     const MINTER_ROLE = ethers.keccak256(ethers.toUtf8Bytes('MINTER_ROLE'));
     const BURNER_ROLE = ethers.keccak256(ethers.toUtf8Bytes('BURNER_ROLE'));
     const SUPPORT_ROLE = ethers.keccak256(ethers.toUtf8Bytes('SUPPORT_ROLE'));
@@ -20,7 +20,7 @@ describe("FeeBuyback", () => {
     let eMXN: Stablecoin;
     let USDC: TestToken;
     let telcoin: TestToken;
-    let feeBuyback: MockFeeBuyback;
+    let AmirX: MockAmirX;
     let wallet: TestWallet;
     let plugin: TestPlugin;
     let aggregator: TestAggregator;
@@ -31,26 +31,26 @@ describe("FeeBuyback", () => {
         const TestToken_Factory = await ethers.getContractFactory("TestToken", deployer);
         telcoin = await TestToken_Factory.deploy("Telcoin", "Tel", 2, deployer.address, 10);
 
-        const FeeBuyback_Factory = await ethers.getContractFactory("MockFeeBuyback", deployer);
-        feeBuyback = await FeeBuyback_Factory.deploy(telcoin);
+        const AmirX_Factory = await ethers.getContractFactory("MockAmirX", deployer);
+        AmirX = await AmirX_Factory.deploy(telcoin);
     });
 
     describe("Static Values", () => {
         beforeEach("setup", async () => {
-            const FeeBuyback_Factory = await ethers.getContractFactory("MockFeeBuyback", deployer);
-            feeBuyback = await FeeBuyback_Factory.deploy(TELCOIN_ADDRESS);
+            const AmirX_Factory = await ethers.getContractFactory("MockAmirX", deployer);
+            AmirX = await AmirX_Factory.deploy(TELCOIN_ADDRESS);
         });
 
         it("TELCOIN", async () => {
-            expect(await feeBuyback.TELCOIN()).to.equal(TELCOIN_ADDRESS);
+            expect(await AmirX.TELCOIN()).to.equal(TELCOIN_ADDRESS);
         });
 
         it("MATIC", async () => {
-            expect(await feeBuyback.MATIC()).to.equal(MATIC_ADDRESS);
+            expect(await AmirX.MATIC()).to.equal(MATIC_ADDRESS);
         });
 
         it("SUPPORT_ROLE", async () => {
-            expect(await feeBuyback.SUPPORT_ROLE()).to.equal(SUPPORT_ROLE);
+            expect(await AmirX.SUPPORT_ROLE()).to.equal(SUPPORT_ROLE);
         });
     });
 
@@ -61,23 +61,23 @@ describe("FeeBuyback", () => {
             eMXN = await Stablecoin_Factory.deploy();
 
             await eUSD.initialize("US Dollar", "eXYZ", 6);
-            await eUSD.grantRole(MINTER_ROLE, feeBuyback);
-            await eUSD.grantRole(BURNER_ROLE, feeBuyback);
+            await eUSD.grantRole(MINTER_ROLE, AmirX);
+            await eUSD.grantRole(BURNER_ROLE, AmirX);
             await eUSD.grantRole(MINTER_ROLE, deployer);
 
             await eMXN.initialize("Mexican Peso", "eMXN", 6);
-            await eMXN.grantRole(MINTER_ROLE, feeBuyback);
-            await eMXN.grantRole(BURNER_ROLE, feeBuyback);
+            await eMXN.grantRole(MINTER_ROLE, AmirX);
+            await eMXN.grantRole(BURNER_ROLE, AmirX);
             await eMXN.grantRole(MINTER_ROLE, deployer);
 
             const Token_Factory = await ethers.getContractFactory("TestToken", deployer);
             USDC = await Token_Factory.deploy("US Dollar Coin", "USDC", 6, holder.address, 10);
 
-            await feeBuyback.initialize();
-            await feeBuyback.grantRole(MAINTAINER_ROLE, deployer);
-            await feeBuyback.grantRole(SWAPPER_ROLE, deployer);
-            await feeBuyback.UpdateXYZ(eUSD, true, 1000000000, 0);
-            await feeBuyback.UpdateXYZ(eMXN, true, 1000000000, 0);
+            await AmirX.initialize();
+            await AmirX.grantRole(MAINTAINER_ROLE, deployer);
+            await AmirX.grantRole(SWAPPER_ROLE, deployer);
+            await AmirX.UpdateXYZ(eUSD, true, 1000000000, 0);
+            await AmirX.UpdateXYZ(eMXN, true, 1000000000, 0);
         });
 
         describe("_verifyStablecoin", () => {
@@ -101,7 +101,7 @@ describe("FeeBuyback", () => {
                 }
 
                 //wallet == address(0)
-                await expect(feeBuyback.stablecoinSwap(ZERO_ADDRESS, ZERO_ADDRESS, stableInputs, defiInputs)).to.revertedWithCustomError(feeBuyback, "ZeroValueInput").withArgs("WALLET");
+                await expect(AmirX.stablecoinSwap(ZERO_ADDRESS, ZERO_ADDRESS, stableInputs, defiInputs)).to.revertedWithCustomError(AmirX, "ZeroValueInput").withArgs("WALLET");
             });
 
             it("revert with ZeroValueInput(SAFE)", async () => {
@@ -125,12 +125,12 @@ describe("FeeBuyback", () => {
 
                 //safe == address(0)
                 //isXYZ(ss.origin)
-                await expect(feeBuyback.stablecoinSwap(deployer, ZERO_ADDRESS, stableInputs, defiInputs)).to.revertedWithCustomError(feeBuyback, "ZeroValueInput").withArgs("SAFE");
-                await feeBuyback.grantRole(MAINTAINER_ROLE, deployer);
-                await expect(feeBuyback.UpdateXYZ(deployer, true, 1000000000, 0)).to.be.not.reverted;
+                await expect(AmirX.stablecoinSwap(deployer, ZERO_ADDRESS, stableInputs, defiInputs)).to.revertedWithCustomError(AmirX, "ZeroValueInput").withArgs("SAFE");
+                await AmirX.grantRole(MAINTAINER_ROLE, deployer);
+                await expect(AmirX.UpdateXYZ(deployer, true, 1000000000, 0)).to.be.not.reverted;
                 stableInputs.origin = await eUSD.getAddress();
                 //isXYZ(ss.target)
-                await expect(feeBuyback.stablecoinSwap(deployer, ZERO_ADDRESS, stableInputs, defiInputs)).to.revertedWithCustomError(feeBuyback, "ZeroValueInput").withArgs("SAFE");
+                await expect(AmirX.stablecoinSwap(deployer, ZERO_ADDRESS, stableInputs, defiInputs)).to.revertedWithCustomError(AmirX, "ZeroValueInput").withArgs("SAFE");
             });
         });
 
@@ -154,8 +154,8 @@ describe("FeeBuyback", () => {
                 swapData: '0x',
             }
 
-            await eUSD.connect(holder).approve(feeBuyback, 10);
-            await expect(feeBuyback.stablecoinSwap(holder, ZERO_ADDRESS, stableInputs, defiInputs)).to.not.be.reverted;
+            await eUSD.connect(holder).approve(AmirX, 10);
+            await expect(AmirX.stablecoinSwap(holder, ZERO_ADDRESS, stableInputs, defiInputs)).to.not.be.reverted;
             expect(await eUSD.totalSupply()).to.equal(0);
             expect(await eMXN.balanceOf(holder)).to.equal(100);
         });
@@ -179,15 +179,15 @@ describe("FeeBuyback", () => {
                 swapData: '0x',
             }
 
-            await USDC.connect(holder).approve(feeBuyback, 10);
-            await expect(feeBuyback.stablecoinSwap(holder, deployer, stableInputs, defiInputs)).to.not.be.reverted;
+            await USDC.connect(holder).approve(AmirX, 10);
+            await expect(AmirX.stablecoinSwap(holder, deployer, stableInputs, defiInputs)).to.not.be.reverted;
             expect(await USDC.balanceOf(deployer)).to.equal(10);
             expect(await eMXN.balanceOf(holder)).to.equal(100);
         });
 
         it("convertFromEXYZ", async () => {
             await USDC.mintTo(deployer, 10);
-            await USDC.connect(deployer).approve(feeBuyback, 10);
+            await USDC.connect(deployer).approve(AmirX, 10);
             const stableInputs = {
                 destination: holder,
                 origin: eUSD,
@@ -207,10 +207,10 @@ describe("FeeBuyback", () => {
             }
 
             await eUSD.mintTo(holder, 10);
-            await eUSD.connect(holder).approve(feeBuyback, 10);
+            await eUSD.connect(holder).approve(AmirX, 10);
 
-            await USDC.connect(holder).approve(feeBuyback, 10);
-            await expect(feeBuyback.stablecoinSwap(holder, deployer, stableInputs, defiInputs)).to.not.be.reverted;
+            await USDC.connect(holder).approve(AmirX, 10);
+            await expect(AmirX.stablecoinSwap(holder, deployer, stableInputs, defiInputs)).to.not.be.reverted;
             expect(await eUSD.totalSupply()).to.equal(0);
             expect(await USDC.balanceOf(deployer)).to.equal(0);
         });
@@ -240,21 +240,18 @@ describe("FeeBuyback", () => {
                     const defiInputs = {
                         aggregator: ZERO_ADDRESS,
                         plugin: ZERO_ADDRESS,
-                        feeToken: ZERO_ADDRESS,
+                        feeToken: deployer.address,
                         referrer: ZERO_ADDRESS,
                         referralFee: 0,
                         walletData: await wallet.getTestSelector(),
                         swapData: '0x',
                     }
 
-                    //address(defi.feeToken) == address(0)
-                    await expect(feeBuyback.stablecoinSwap(wallet, holder, stableInputs, defiInputs)).to.revertedWithCustomError(feeBuyback, "ZeroValueInput").withArgs("BUYBACK");
-                    defiInputs.feeToken = deployer.address;
                     //defi.aggregator == address(0)
-                    await expect(feeBuyback.stablecoinSwap(wallet, holder, stableInputs, defiInputs)).to.revertedWithCustomError(feeBuyback, "ZeroValueInput").withArgs("BUYBACK");
+                    await expect(AmirX.stablecoinSwap(wallet, holder, stableInputs, defiInputs)).to.revertedWithCustomError(AmirX, "ZeroValueInput").withArgs("BUYBACK");
                     defiInputs.aggregator = deployer.address;
                     //defi.swapData.length == 0
-                    await expect(feeBuyback.stablecoinSwap(wallet, holder, stableInputs, defiInputs)).to.revertedWithCustomError(feeBuyback, "ZeroValueInput").withArgs("BUYBACK");
+                    await expect(AmirX.stablecoinSwap(wallet, holder, stableInputs, defiInputs)).to.revertedWithCustomError(AmirX, "ZeroValueInput").withArgs("BUYBACK");
                     defiInputs.swapData = deployer.address;
                 });
 
@@ -279,7 +276,7 @@ describe("FeeBuyback", () => {
 
                     //if (defi.feeToken == TELCOIN)
                     //defi.referrer == address(0)
-                    await expect(feeBuyback.stablecoinSwap(wallet, holder, stableInputs, defiInputs)).to.revertedWithCustomError(feeBuyback, "ZeroValueInput").withArgs("PLUGIN");
+                    await expect(AmirX.stablecoinSwap(wallet, holder, stableInputs, defiInputs)).to.revertedWithCustomError(AmirX, "ZeroValueInput").withArgs("PLUGIN");
                 });
             });
 
@@ -302,8 +299,8 @@ describe("FeeBuyback", () => {
                     swapData: '0x',
                 }
 
-                await telcoin.approve(feeBuyback, 10);
-                await expect(feeBuyback.stablecoinSwap(holder, deployer, stableInputs, defiInputs)).to.not.be.reverted;
+                await telcoin.approve(AmirX, 10);
+                await expect(AmirX.stablecoinSwap(holder, deployer, stableInputs, defiInputs)).to.not.be.reverted;
                 expect(await telcoin.balanceOf(deployer)).to.equal(1000);
             });
 
@@ -326,8 +323,8 @@ describe("FeeBuyback", () => {
                     swapData: '0x',
                 }
 
-                await telcoin.approve(feeBuyback, 10);
-                await expect(feeBuyback.stablecoinSwap(holder, deployer, stableInputs, defiInputs)).to.not.be.reverted;
+                await telcoin.approve(AmirX, 10);
+                await expect(AmirX.stablecoinSwap(holder, deployer, stableInputs, defiInputs)).to.not.be.reverted;
                 expect(await telcoin.balanceOf(plugin)).to.equal(10);
             });
 
@@ -351,7 +348,7 @@ describe("FeeBuyback", () => {
                 }
 
                 await telcoin.transfer(aggregator, 10);
-                await expect(feeBuyback.stablecoinSwap(holder, deployer, stableInputs, defiInputs)).to.not.be.reverted;
+                await expect(AmirX.stablecoinSwap(holder, deployer, stableInputs, defiInputs)).to.not.be.reverted;
                 expect(await telcoin.balanceOf(deployer)).to.equal(1000);
             });
 
@@ -375,7 +372,7 @@ describe("FeeBuyback", () => {
                 }
 
                 await telcoin.transfer(aggregator, 10);
-                await expect(feeBuyback.stablecoinSwap(holder, deployer, stableInputs, defiInputs)).to.not.be.reverted;
+                await expect(AmirX.stablecoinSwap(holder, deployer, stableInputs, defiInputs)).to.not.be.reverted;
                 expect(await telcoin.balanceOf(deployer)).to.equal(1000);
             });
         });
@@ -383,24 +380,24 @@ describe("FeeBuyback", () => {
 
     describe("rescueCrypto", () => {
         beforeEach("setup", async () => {
-            const FeeBuyback_Factory = await ethers.getContractFactory("MockFeeBuyback", deployer);
-            feeBuyback = await FeeBuyback_Factory.deploy(TELCOIN_ADDRESS);
-            await feeBuyback.initialize();
-            await feeBuyback.grantRole(SUPPORT_ROLE, deployer);
+            const AmirX_Factory = await ethers.getContractFactory("MockAmirX", deployer);
+            AmirX = await AmirX_Factory.deploy(TELCOIN_ADDRESS);
+            await AmirX.initialize();
+            await AmirX.grantRole(SUPPORT_ROLE, deployer);
         });
 
         it("MATIC insufficient balance", async () => {
-            await expect(feeBuyback.rescueCrypto(MATIC_ADDRESS, 101)).to.be.revertedWith("FeeBuyback: MATIC send failed");
+            await expect(AmirX.rescueCrypto(MATIC_ADDRESS, 101)).to.be.revertedWith("AmirX: MATIC send failed");
         });
 
         it("MATIC", async () => {
-            deployer.sendTransaction({ value: 101, to: await feeBuyback.getAddress() });
-            await expect(feeBuyback.rescueCrypto(MATIC_ADDRESS, 101)).to.not.be.reverted;
+            deployer.sendTransaction({ value: 101, to: await AmirX.getAddress() });
+            await expect(AmirX.rescueCrypto(MATIC_ADDRESS, 101)).to.not.be.reverted;
         });
 
         it("ERC20", async () => {
-            await telcoin.transfer(feeBuyback, 101);
-            await expect(feeBuyback.rescueCrypto(await telcoin.getAddress(), 101)).to.not.be.reverted;
+            await telcoin.transfer(AmirX, 101);
+            await expect(AmirX.rescueCrypto(await telcoin.getAddress(), 101)).to.not.be.reverted;
             expect(await telcoin.balanceOf(deployer)).to.equal(1000);
         });
     });

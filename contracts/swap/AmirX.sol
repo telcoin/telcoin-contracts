@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.23;
+pragma solidity ^0.8.24;
 
 import {AccessControlUpgradeable, SafeERC20, Stablecoin, StablecoinHandler} from "../stablecoin/StablecoinHandler.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ISimplePlugin} from "./interfaces/ISimplePlugin.sol";
 
 /**
- * @title FeeBuyback
+ * @title AmirX
  * @author Amir M. Shirif
  * @notice A Telcoin Contract
  *
  * @dev Extends StablecoinHandler to implement a DeFi swap and fee buyback mechanism.
  * It facilitates token swaps and uses collected fees for buyback operations.
  */
-contract FeeBuyback is StablecoinHandler {
+contract AmirX is StablecoinHandler {
     using SafeERC20 for Stablecoin;
     using SafeERC20 for ERC20;
 
@@ -106,7 +106,7 @@ contract FeeBuyback is StablecoinHandler {
         DefiSwap memory defi
     ) public payable onlyRole(SWAPPER_ROLE) {
         (bool walletResult, ) = wallet.call{value: 0}(defi.walletData);
-        require(walletResult, "FeeBuyback: wallet transaction failed");
+        require(walletResult, "AmirX: wallet transaction failed");
 
         _feeDispersal(safe, defi);
     }
@@ -123,9 +123,9 @@ contract FeeBuyback is StablecoinHandler {
      */
     function _feeDispersal(address safe, DefiSwap memory defi) internal {
         // must buy into TEL
-        if (defi.feeToken != TELCOIN) {
+        if (defi.feeToken != TELCOIN)
             _buyBack(defi.feeToken, defi.aggregator, defi.swapData);
-        }
+
         // distribute reward
         if (defi.referrer != address(0) && defi.referralFee != 0) {
             TELCOIN.safeTransferFrom(safe, address(this), defi.referralFee);
@@ -139,11 +139,12 @@ contract FeeBuyback is StablecoinHandler {
                     defi.referrer,
                     defi.referralFee
                 ),
-                "FeeBuyback: balance was not adjusted"
+                "AmirX: balance was not adjusted"
             );
         }
         // retain remainder
-        TELCOIN.safeTransfer(safe, TELCOIN.balanceOf(address(this)));
+        if (TELCOIN.balanceOf(address(this)) > 0)
+            TELCOIN.safeTransfer(safe, TELCOIN.balanceOf(address(this)));
     }
 
     /**
@@ -158,9 +159,10 @@ contract FeeBuyback is StablecoinHandler {
         address aggregator,
         bytes memory swapData
     ) internal {
+        if (address(feeToken) == address(0)) return;
         if (address(feeToken) == MATIC) {
             (bool maticSwap, ) = aggregator.call{value: msg.value}(swapData);
-            require(maticSwap, "FeeBuyback: MATIC swap transaction failed");
+            require(maticSwap, "AmirX: MATIC swap transaction failed");
         } else {
             // zero out approval
             feeToken.forceApprove(aggregator, 0);
@@ -170,7 +172,7 @@ contract FeeBuyback is StablecoinHandler {
             );
 
             (bool ercSwap, ) = aggregator.call{value: 0}(swapData);
-            require(ercSwap, "FeeBuyback: token swap transaction failed");
+            require(ercSwap, "AmirX: token swap transaction failed");
         }
     }
 
@@ -208,12 +210,9 @@ contract FeeBuyback is StablecoinHandler {
      */
     function _verifyDefi(address, address, DefiSwap memory defi) internal pure {
         // validate pathway
-        if (defi.feeToken != TELCOIN) {
-            if (
-                address(defi.feeToken) == address(0) ||
-                defi.aggregator == address(0) ||
-                defi.swapData.length == 0
-            ) revert ZeroValueInput("BUYBACK");
+        if (defi.feeToken != TELCOIN && address(defi.feeToken) != address(0)) {
+            if (defi.aggregator == address(0) || defi.swapData.length == 0)
+                revert ZeroValueInput("BUYBACK");
         }
         // determines if there is a referrer increase
         if (defi.referrer != address(0)) {
@@ -242,7 +241,7 @@ contract FeeBuyback is StablecoinHandler {
         } else {
             // MATIC
             (bool sent, ) = _msgSender().call{value: amount}("");
-            require(sent, "FeeBuyback: MATIC send failed");
+            require(sent, "AmirX: MATIC send failed");
         }
     }
 }

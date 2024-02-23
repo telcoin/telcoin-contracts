@@ -1,6 +1,6 @@
-# FeeBuyback Contracts Overview
+# AmirX Contracts Overview
 
-This documentation provides insights into the FeeBuyback contract and the ISimplePlugin interface. The system is designed to facilitate DeFi swap operations while incorporating a mechanism for the buyback of fees using collected tokens.
+This documentation provides insights into the AmirX contract and the ISimplePlugin interface. The system is designed to facilitate DeFi swap operations while incorporating a mechanism for the buyback of fees using collected tokens.
 
 ## Contracts
 
@@ -10,7 +10,7 @@ This documentation provides insights into the FeeBuyback contract and the ISimpl
 
 `increaseClaimableBy(address account, uint256 amount)`: Allows increasing the claimable balance of account by amount, indicating rewards or referral fees. Returns a boolean value indicating success.
 
-### `FeeBuyback`
+### `AmirX`
 
 Extends the StablecoinHandler contract to implement a DeFi swap and fee buyback mechanism. It manages token swaps and utilizes collected fees for buyback operations, supporting both ERC20 tokens and native MATIC.
 

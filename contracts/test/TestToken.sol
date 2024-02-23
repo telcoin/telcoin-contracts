@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "../bridge/interfaces/IERC20Withdrawable.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20Withdrawable} from "../bridge/interfaces/IERC20Withdrawable.sol";
 
 //TESTING ONLY
 contract TestToken is ERC20, IERC20Withdrawable {

@@ -23,9 +23,8 @@
   "homepage": "https://github.com/telcoin/telcoin-contracts#readme",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
-    "@types/node": "^20.11.16",
-    "hardhat": "^2.19.5",
-    "solidity-coverage": "^0.8.6"
+    "hardhat": "^2.20.1",
+    "solidity-docgen": "^0.6.0-beta.36"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.0.1",

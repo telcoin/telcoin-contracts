@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../interfaces/IPOSBridge.sol";
-import "./TestPredicate.sol";
+import {IPOSBridge} from "../interfaces/IPOSBridge.sol";
+import {TestPredicate} from "./TestPredicate.sol";
 
 //TESTING ONLY
 contract TestPOSBridge is IPOSBridge {

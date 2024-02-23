@@ -1,7 +1,7 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { Stablecoin, FeeBuyback, TestToken } from "../../typechain-types";
+import { Stablecoin, AmirX, TestToken } from "../../typechain-types";
 
 describe("StablecoinHandler", () => {
     const MINTER_ROLE = ethers.keccak256(ethers.toUtf8Bytes('MINTER_ROLE'));
@@ -17,12 +17,12 @@ describe("StablecoinHandler", () => {
     let eUSD: Stablecoin;
     let eMXN: Stablecoin;
     let USDC: TestToken;
-    let stablecoinHandler: FeeBuyback;
+    let stablecoinHandler: AmirX;
 
     beforeEach("setup", async () => {
         [deployer, holder] = await ethers.getSigners();
 
-        const StablecoinHandler_Factory = await ethers.getContractFactory("FeeBuyback", deployer);
+        const StablecoinHandler_Factory = await ethers.getContractFactory("AmirX", deployer);
         stablecoinHandler = await StablecoinHandler_Factory.deploy();
     });
 
