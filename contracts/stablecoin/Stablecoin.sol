@@ -124,6 +124,17 @@ contract Stablecoin is ERC20PermitUpgradeable, Blacklist {
         _transfer(user, _msgSender(), balanceOf(user));
     }
 
+    function _update(
+        address from,
+        address to,
+        uint256 value
+    ) internal override {
+        if (blacklisted(from)) revert Blacklisted(from);
+        if (blacklisted(to)) revert Blacklisted(to);
+
+        super._update(from, to, value);
+    }
+
     /************************************************
      *   support functions
      ************************************************/
