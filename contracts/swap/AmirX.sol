@@ -72,25 +72,24 @@ contract AmirX is StablecoinHandler {
         // checks if it will fail
         _verifyStablecoin(wallet, safe, ss, defi);
 
-        //eXYZ ot eXYZ
-        if (isXYZ(ss.origin) && isXYZ(ss.target)) {
-            swapAndSend(wallet, ss);
-            return;
-        }
-
-        //stablecoin swap
         if (isXYZ(ss.origin) && !isXYZ(ss.target))
+            //stablecoin swap
             convertFromEXYZ(wallet, safe, ss);
 
         //defi swap
-        uint256 iBalance = ERC20(ss.origin).balanceOf(wallet);
-        if (defi.walletData.length != 0) defiSwap(wallet, safe, defi);
-        uint256 fBalance = ERC20(ss.origin).balanceOf(wallet);
-        // //stablecoin swap
-        if (!isXYZ(ss.origin) && isXYZ(ss.target)) {
+        if (ss.origin != address(0)) {
+            uint256 iBalance = ERC20(ss.origin).balanceOf(wallet);
+            if (defi.walletData.length != 0) defiSwap(wallet, safe, defi);
+            uint256 fBalance = ERC20(ss.origin).balanceOf(wallet);
             if (fBalance - iBalance != 0) ss.oAmount = fBalance - iBalance;
+        } else if (defi.walletData.length != 0) defiSwap(wallet, safe, defi);
+
+        if (!isXYZ(ss.origin) && isXYZ(ss.target))
+            // stablecoin swap
             convertToEXYZ(wallet, safe, ss);
-        }
+        else if (isXYZ(ss.origin) && isXYZ(ss.target))
+            //eXYZ to eXYZ
+            swapAndSend(wallet, ss);
     }
 
     /**
