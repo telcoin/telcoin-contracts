@@ -1,6 +1,6 @@
 # telcoin-contracts
 
-![hardhat](https://img.shields.io/badge/hardhat-2.20.1-blue)
+![hardhat](https://img.shields.io/badge/hardhat-2.21.0-blue)
 ![node](https://img.shields.io/badge/node-v20.11.1-brightgreen.svg)
 ![solidity](https://img.shields.io/badge/solidity-0.8.24-red)
 ![OpenZeppelin](https://img.shields.io/badge/OpenZeppelin-^5.0.1-brightgreen.svg)
