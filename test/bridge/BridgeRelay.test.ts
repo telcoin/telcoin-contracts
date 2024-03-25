@@ -98,14 +98,36 @@ describe("BridgeRelay", () => {
             await matic.transfer(bridgeRelay, 1);
         });
 
-        it("erc20Rescue", async () => {
-            await expect(bridgeRelay.connect(deployer).erc20Rescue(holder)).to.not.be.reverted;
+        it("erc20Rescue matic", async () => {
+            await expect(bridgeRelay.connect(deployer).rescueCrypto(await matic.getAddress(), holder)).to.not.be.reverted;
             expect(await matic.balanceOf(holder)).to.equal(1);
             expect(await matic.balanceOf(bridgeRelay)).to.equal(0);
         });
 
+        it("erc20Rescue weth", async () => {
+            await deployer.sendTransaction({ to: weth, value: 1 });
+            await weth.transfer(bridgeRelay, 1);
+            await expect(bridgeRelay.connect(deployer).rescueCrypto(await weth.getAddress(), holder)).to.not.be.reverted;
+            expect(await weth.balanceOf(holder)).to.equal(0);
+            expect(await weth.balanceOf(bridgeRelay)).to.equal(0);
+        });
+
+        it("erc20Rescue token", async () => {
+            await telcoin.transfer(bridgeRelay, 1);
+            await expect(bridgeRelay.connect(deployer).rescueCrypto(await telcoin.getAddress(), holder)).to.not.be.reverted;
+            expect(await telcoin.balanceOf(predicate)).to.equal(1);
+            expect(await telcoin.balanceOf(bridgeRelay)).to.equal(0);
+        });
+
+        it("erc20Rescue eth", async () => {
+            await deployer.sendTransaction({ to: bridgeRelay, value: ethers.parseEther("1.0") });
+            await expect(bridgeRelay.connect(deployer).rescueCrypto(ETHER, holder)).to.not.be.reverted;
+            expect(await ethers.provider.getBalance(bridgeRelay)).to.equal(ethers.parseEther("0"));
+            expect(await ethers.provider.getBalance(pos)).to.equal(ethers.parseEther("1.0"));
+        });
+
         it("BridgeRelay: caller must be owner", async () => {
-            await expect(bridgeRelay.connect(holder).erc20Rescue(holder)).to.be.revertedWith("BridgeRelay: caller must be owner");
+            await expect(bridgeRelay.connect(holder).rescueCrypto(await matic.getAddress(), holder)).to.be.revertedWith("BridgeRelay: caller must be owner");
             expect(await matic.balanceOf(bridgeRelay)).to.equal(1);
         });
     });

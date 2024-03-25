@@ -32,6 +32,11 @@ abstract contract Blacklist is AccessControlUpgradeable {
     bytes32 public constant BLACKLISTER_ROLE = keccak256("BLACKLISTER_ROLE");
 
     /**
+     * @dev reverts when blacklist attempting to interact
+     */
+    error Blacklisted(address account);
+
+    /**
      * @dev reverts if the blacklisting of an already blacklisted address is attempted
      */
     error AlreadyBlacklisted(address user);
@@ -73,8 +78,9 @@ abstract contract Blacklist is AccessControlUpgradeable {
         address user
     ) public virtual onlyRole(BLACKLISTER_ROLE) {
         if (blacklisted(user)) revert AlreadyBlacklisted(user);
-        _setBlacklist(user, true);
         _onceBlacklisted(user);
+        // do this after so it doesnt trip blacklisted restirctions
+        _setBlacklist(user, true);
         emit AddedBlacklist(user);
     }
 

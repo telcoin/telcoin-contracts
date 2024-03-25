@@ -36,67 +36,103 @@ contract BridgeRelay {
         0xE075504E14bBB4d2aA6333DB5b8EFc1e8c2AE05B;
 
     /**
-     * @notice calls Polygon POS bridge for deposit
-     * @dev the contract is designed in a way where anyone can call the function without risking funds
-     * @dev MATIC cannot be bridged
-     * @param token address of the token that is desired to be pushed accross the bridge
+     * @dev Bridges specified ERC20 token across the Polygon bridge. Reverts for MATIC. Unwraps WETH to ETH for bridging as ETH.
+     * @param token The ERC20 token to bridge.
      */
-    function bridgeTransfer(IERC20 token) external payable {
-        // revert if MATIC is attempted
-        if (token == MATIC) revert MATICUnbridgeable();
-        // unwrap WETH
+    function bridgeTransfer(IERC20 token) external {
+        if (token == MATIC) revert MATICUnbridgeable(); // Revert if trying to bridge MATIC
+
         if (token == WETH) {
+            // If token is WETH, convert it to ETH by withdrawing
             IERC20Withdrawable(address(WETH)).withdraw(
                 WETH.balanceOf(address(this))
             );
-            // transfer ERC20 tokens
-        } else if (token != ETHER) {
-            transferERCToBridge(token);
-            return;
         }
-        // transfer ETHER
-        POS_BRIDGE.depositEtherFor{value: address(this).balance}(address(this));
+
+        if (token == ETHER || token == WETH)
+            depositEther(); // Bridge as ETH
+        else depositERC(token); // Bridge as ERC20 token
     }
 
     /**
-     * @notice pushes token transfers through to the PoS bridge
-     * @dev this is for ERC20 tokens that are not the matic token
-     * @dev only tokens that are already mapped on the bridge will succeed
-     * @param token is address of the token that is desired to be pushed accross the bridge
+     * @dev Internal function to handle bridging of ERC20 tokens.
+     * @param token The ERC20 token to bridge.
+     * @return success Boolean value indicating if the operation was successful.
      */
-    function transferERCToBridge(IERC20 token) internal {
-        //zero out approvals
+    function depositERC(IERC20 token) internal returns (bool) {
+        // Reset allowance and set it to the token balance of this contract
         token.forceApprove(PREDICATE_ADDRESS, 0);
-        // increase approval to necessary amount
         token.safeIncreaseAllowance(
             PREDICATE_ADDRESS,
             token.balanceOf(address(this))
         );
-        //deposit
-        POS_BRIDGE.depositFor(
-            address(this),
-            address(token),
-            abi.encodePacked(token.balanceOf(address(this)))
-        );
+
+        // Try to bridge the token using the PoS bridge contract
+        try
+            POS_BRIDGE.depositFor(
+                address(this),
+                address(token),
+                abi.encodePacked(token.balanceOf(address(this)))
+            )
+        {
+            return true;
+        } catch {
+            return false;
+        }
     }
 
     /**
-     * @notice helps recover MATIC which cannot be bridged with POS bridge
-     * @dev only Owner may make function call
-     * @param destination address where funds are returned
+     * @dev Internal function to handle bridging of ETH.
+     * @return success Boolean value indicating if the operation was successful.
      */
-    function erc20Rescue(address destination) external {
-        // restrict to woner
+    function depositEther() internal returns (bool) {
+        // Try to bridge ETH using the PoS bridge contract
+        try
+            POS_BRIDGE.depositEtherFor{value: address(this).balance}(
+                address(this)
+            )
+        {
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * @dev Allows the owner to rescue tokens that cannot be bridged or need to be recovered.
+     * @param token The ERC20 token or ETH to rescue.
+     * @param destination The address to send the rescued funds to.
+     */
+    function rescueCrypto(IERC20 token, address destination) external {
         require(
             msg.sender == OWNER_ADDRESS,
             "BridgeRelay: caller must be owner"
-        );
-        //transfer MATIC
-        MATIC.safeTransfer(destination, MATIC.balanceOf(address(this)));
+        ); // Only allow the owner to perform this action
+
+        if (token == MATIC) {
+            // Special handling for MATIC, which cannot be bridged by this contract
+            MATIC.safeTransfer(destination, MATIC.balanceOf(address(this)));
+        }
+
+        if (token == WETH) {
+            // If token is WETH, convert it to ETH by withdrawing
+            IERC20Withdrawable(address(WETH)).withdraw(
+                WETH.balanceOf(address(this))
+            );
+        }
+
+        // Attempt to bridge or directly transfer funds to the destination
+        if (token == ETHER || token == WETH) {
+            if (!depositEther())
+                destination.call{value: address(this).balance}("");
+        } else if (token != ETHER) {
+            if (!depositERC(token))
+                token.safeTransfer(destination, token.balanceOf(address(this)));
+        }
     }
 
     /**
-     * @notice receives ETHER
+     * @dev Fallback function to allow contract to receive ETH.
      */
     receive() external payable {}
 }

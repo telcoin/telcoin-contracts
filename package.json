@@ -23,7 +23,7 @@
   "homepage": "https://github.com/telcoin/telcoin-contracts#readme",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
-    "hardhat": "^2.20.1",
+    "hardhat": "^2.21.0",
     "solidity-docgen": "^0.6.0-beta.36"
   },
   "dependencies": {
