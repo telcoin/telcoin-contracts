@@ -50,52 +50,65 @@ address OWNER_ADDRESS
 ### bridgeTransfer
 
 ```solidity
-function bridgeTransfer(contract IERC20 token) external payable
+function bridgeTransfer(contract IERC20 token) external
 ```
 
-calls Polygon POS bridge for deposit
-
-_the contract is designed in a way where anyone can call the function without risking funds
-MATIC cannot be bridged_
+_Bridges specified ERC20 token across the Polygon bridge. Reverts for MATIC. Unwraps WETH to ETH for bridging as ETH._
 
 #### Parameters
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| token | contract IERC20 | address of the token that is desired to be pushed accross the bridge |
+| token | contract IERC20 | The ERC20 token to bridge. |
 
-### transferERCToBridge
+### depositERC
 
 ```solidity
-function transferERCToBridge(contract IERC20 token) internal
+function depositERC(contract IERC20 token) internal returns (bool)
 ```
 
-pushes token transfers through to the PoS bridge
-
-_this is for ERC20 tokens that are not the matic token
-only tokens that are already mapped on the bridge will succeed_
+_Internal function to handle bridging of ERC20 tokens._
 
 #### Parameters
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| token | contract IERC20 | is address of the token that is desired to be pushed accross the bridge |
+| token | contract IERC20 | The ERC20 token to bridge. |
 
-### erc20Rescue
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | bool | success Boolean value indicating if the operation was successful. |
+
+### depositEther
 
 ```solidity
-function erc20Rescue(address destination) external
+function depositEther() internal returns (bool)
 ```
 
-helps recover MATIC which cannot be bridged with POS bridge
+_Internal function to handle bridging of ETH._
 
-_only Owner may make function call_
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | bool | success Boolean value indicating if the operation was successful. |
+
+### rescueCrypto
+
+```solidity
+function rescueCrypto(contract IERC20 token, address destination) external
+```
+
+_Allows the owner to rescue tokens that cannot be bridged or need to be recovered._
 
 #### Parameters
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| destination | address | address where funds are returned |
+| token | contract IERC20 | The ERC20 token or ETH to rescue. |
+| destination | address | The address to send the rescued funds to. |
 
 ### receive
 
@@ -103,7 +116,7 @@ _only Owner may make function call_
 receive() external payable
 ```
 
-receives ETHER
+_Fallback function to allow contract to receive ETH._
 
 ## IERC20Withdrawable
 
@@ -215,7 +228,7 @@ constructor(contract IERC20 weth, contract IERC20 matic, contract IPOSBridge pos
 ### bridgeTransfer
 
 ```solidity
-function bridgeTransfer(contract IERC20 token) external payable
+function bridgeTransfer(contract IERC20 token) external
 ```
 
 calls Polygon POS bridge for deposit
@@ -229,27 +242,22 @@ MATIC cannot be bridged_
 | ---- | ---- | ----------- |
 | token | contract IERC20 | address of the token that is desired to be pushed accross the bridge |
 
-### transferERCToBridge
+### depositERC
 
 ```solidity
-function transferERCToBridge(contract IERC20 token) internal
+function depositERC(contract IERC20 token) internal returns (bool)
 ```
 
-pushes token transfers through to the PoS bridge
-
-_this is for ERC20 tokens that are not the matic token
-only tokens that are already mapped on the bridge will succeed_
-
-#### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| token | contract IERC20 | is address of the token that is desired to be pushed accross the bridge |
-
-### erc20Rescue
+### depositEther
 
 ```solidity
-function erc20Rescue(address destination) external
+function depositEther() internal returns (bool)
+```
+
+### rescueCrypto
+
+```solidity
+function rescueCrypto(contract IERC20 token, address destination) external
 ```
 
 helps recover MATIC which cannot be bridged with POS bridge
@@ -260,6 +268,7 @@ _only Owner may make function call_
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
+| token | contract IERC20 |  |
 | destination | address | address where funds are returned |
 
 ### receive
@@ -773,6 +782,18 @@ _This function is called internally when an account is blacklisted._
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | user | address | The blacklisted user whose balance will be transferred. |
+
+### _update
+
+```solidity
+function _update(address from, address to, uint256 value) internal
+```
+
+_Transfers a `value` amount of tokens from `from` to `to`, or alternatively mints (or burns) if `from`
+(or `to`) is the zero address. All customizations to transfers, mints, and burns should be done by overriding
+this function.
+
+Emits a {Transfer} event._
 
 ### erc20Rescue
 
@@ -1590,6 +1611,14 @@ struct BlacklistStorage {
 ```solidity
 bytes32 BLACKLISTER_ROLE
 ```
+
+### Blacklisted
+
+```solidity
+error Blacklisted(address account)
+```
+
+_reverts when blacklist attempting to interact_
 
 ### AlreadyBlacklisted
 
