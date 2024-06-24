@@ -1,5 +1,7 @@
 # telcoin-contracts
 
+
+[![NPM Package](https://img.shields.io/badge/npm-1.0.0-blue)](https://www.npmjs.com/package/telcoin-contracts)
 ![hardhat](https://img.shields.io/badge/hardhat-2.21.0-blue)
 ![node](https://img.shields.io/badge/node-v20.11.1-brightgreen.svg)
 ![solidity](https://img.shields.io/badge/solidity-0.8.24-red)
@@ -8,6 +10,14 @@
 ![comments](https://img.shields.io/badge/comments->80%25-yellowgreen)
 
 **Telcoin** is designed to complement telecom, mobile money, and e-wallet partners globally with both traditional fiat and blockchain transaction rails that underpin our fast and affordable digital financial service offerings. Telcoin combines the best parts of the burgeoning DeFi ecosystem with our compliance-first approach to each market, ensuring that the company takes on a fraction of traditional financial counter-party, execution, and custody risks.
+
+## Installation
+
+## Hardhat (npm)
+
+```shell
+> npm install telcoin-contracts
+```
 
 ## Running Tests
 
