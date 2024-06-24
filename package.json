@@ -1,6 +1,6 @@
 {
   "name": "telcoin-contracts",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Protocol contracts that are part of the Telcoin application's blockchain infrastructure",
   "main": "index.js",
   "scripts": {
