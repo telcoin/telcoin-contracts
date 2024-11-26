@@ -11,11 +11,12 @@ describe("AmirX", () => {
     const MAINTAINER_ROLE = ethers.keccak256(ethers.toUtf8Bytes('MAINTAINER_ROLE'));
 
     const TELCOIN_ADDRESS = '0xdF7837DE1F2Fa4631D716CF2502f8b230F1dcc32';
-    const MATIC_ADDRESS = '0x0000000000000000000000000000000000001010';
+    const POL_ADDRESS = '0x0000000000000000000000000000000000001010';
     const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
     let deployer: SignerWithAddress;
     let holder: SignerWithAddress;
+    let safe: SignerWithAddress;
     let eUSD: Stablecoin;
     let eMXN: Stablecoin;
     let USDC: TestToken;
@@ -26,7 +27,7 @@ describe("AmirX", () => {
     let aggregator: TestAggregator;
 
     beforeEach("setup", async () => {
-        [deployer, holder] = await ethers.getSigners();
+        [deployer, holder, safe] = await ethers.getSigners();
 
         const TestToken_Factory = await ethers.getContractFactory("TestToken", deployer);
         telcoin = await TestToken_Factory.deploy("Telcoin", "Tel", 2, deployer.address, 10);
@@ -45,8 +46,8 @@ describe("AmirX", () => {
             expect(await AmirX.TELCOIN()).to.equal(TELCOIN_ADDRESS);
         });
 
-        it("MATIC", async () => {
-            expect(await AmirX.MATIC()).to.equal(MATIC_ADDRESS);
+        it("POL", async () => {
+            expect(await AmirX.POL()).to.equal(POL_ADDRESS);
         });
 
         it("SUPPORT_ROLE", async () => {
@@ -54,7 +55,7 @@ describe("AmirX", () => {
         });
     });
 
-    describe("StablecoinSwap", () => {
+    describe("Swaps", () => {
         beforeEach("setup", async () => {
             const Stablecoin_Factory = await ethers.getContractFactory("Stablecoin", deployer);
             eUSD = await Stablecoin_Factory.deploy();
@@ -78,166 +79,76 @@ describe("AmirX", () => {
             await AmirX.grantRole(SWAPPER_ROLE, deployer);
             await AmirX.UpdateXYZ(eUSD, true, 1000000000, 0);
             await AmirX.UpdateXYZ(eMXN, true, 1000000000, 0);
+
+            const TestWallet_Factory = await ethers.getContractFactory("TestWallet", deployer);
+            wallet = await TestWallet_Factory.deploy();
+
+            const TestPlugin_Factory = await ethers.getContractFactory("TestPlugin", deployer);
+            plugin = await TestPlugin_Factory.deploy(await telcoin.getAddress());
+
+            const TestAggregator_Factory = await ethers.getContractFactory("TestAggregator", deployer);
+            aggregator = await TestAggregator_Factory.deploy(await telcoin.getAddress());
         });
 
-        describe("_verifyStablecoin", () => {
-            it("revert with ZeroValueInput(WALLET)", async () => {
+        describe("revert", () => {
+            it("swap: ZeroValueInput(WALLET)", async () => {
                 const stableInputs = {
+                    liquiditySafe: ZERO_ADDRESS,
                     destination: ZERO_ADDRESS,
                     origin: ZERO_ADDRESS,
                     oAmount: 0,
                     target: ZERO_ADDRESS,
-                    tAmount: 0
+                    tAmount: 0,
+                    stablecoinFeeCurrency: await USDC.getAddress(),
+                    stablecoinFeeSafe: deployer.address,
+                    feeAmount: 1
                 }
 
                 const defiInputs = {
+                    defiSafe: ZERO_ADDRESS,
                     aggregator: ZERO_ADDRESS,
                     plugin: ZERO_ADDRESS,
                     feeToken: ZERO_ADDRESS,
                     referrer: ZERO_ADDRESS,
                     referralFee: 0,
-                    walletData: '0x',
+                    walletData: deployer.address,
                     swapData: '0x',
                 }
 
-                //wallet == address(0)
-                await expect(AmirX.stablecoinSwap(ZERO_ADDRESS, ZERO_ADDRESS, stableInputs, defiInputs)).to.revertedWithCustomError(AmirX, "ZeroValueInput").withArgs("WALLET");
+                await expect(AmirX.swap(ZERO_ADDRESS, true, stableInputs, defiInputs)).to.revertedWithCustomError(AmirX, "ZeroValueInput").withArgs("WALLET");
             });
 
-            it("revert with ZeroValueInput(SAFE)", async () => {
+            it("defiToStablecoinSwap: ZeroValueInput(WALLET)", async () => {
                 const stableInputs = {
+                    liquiditySafe: ZERO_ADDRESS,
                     destination: ZERO_ADDRESS,
                     origin: ZERO_ADDRESS,
                     oAmount: 0,
                     target: ZERO_ADDRESS,
-                    tAmount: 0
+                    tAmount: 0,
+                    stablecoinFeeCurrency: await USDC.getAddress(),
+                    stablecoinFeeSafe: deployer.address,
+                    feeAmount: 1
                 }
 
                 const defiInputs = {
+                    defiSafe: ZERO_ADDRESS,
                     aggregator: ZERO_ADDRESS,
                     plugin: ZERO_ADDRESS,
                     feeToken: ZERO_ADDRESS,
                     referrer: ZERO_ADDRESS,
                     referralFee: 0,
-                    walletData: '0x',
+                    walletData: deployer.address,
                     swapData: '0x',
                 }
 
-                //safe == address(0)
-                //isXYZ(ss.origin)
-                await expect(AmirX.stablecoinSwap(deployer, ZERO_ADDRESS, stableInputs, defiInputs)).to.revertedWithCustomError(AmirX, "ZeroValueInput").withArgs("SAFE");
-                await AmirX.grantRole(MAINTAINER_ROLE, deployer);
-                await expect(AmirX.UpdateXYZ(deployer, true, 1000000000, 0)).to.be.not.reverted;
-                stableInputs.origin = await eUSD.getAddress();
-                //isXYZ(ss.target)
-                await expect(AmirX.stablecoinSwap(deployer, ZERO_ADDRESS, stableInputs, defiInputs)).to.revertedWithCustomError(AmirX, "ZeroValueInput").withArgs("SAFE");
-            });
-        });
-
-        it("swapAndSend", async () => {
-            await eUSD.mintTo(holder, 10);
-            const stableInputs = {
-                destination: holder,
-                origin: eUSD,
-                oAmount: 10,
-                target: eMXN,
-                tAmount: 100
-            }
-
-            const defiInputs = {
-                aggregator: ZERO_ADDRESS,
-                plugin: ZERO_ADDRESS,
-                feeToken: ZERO_ADDRESS,
-                referrer: ZERO_ADDRESS,
-                referralFee: 0,
-                walletData: '0x',
-                swapData: '0x',
-            }
-
-            await eUSD.connect(holder).approve(AmirX, 10);
-            await expect(AmirX.stablecoinSwap(holder, ZERO_ADDRESS, stableInputs, defiInputs)).to.not.be.reverted;
-            expect(await eUSD.totalSupply()).to.equal(0);
-            expect(await eMXN.balanceOf(holder)).to.equal(100);
-        });
-
-        it("convertToEXYZ", async () => {
-            const stableInputs = {
-                destination: holder,
-                origin: USDC,
-                oAmount: 10,
-                target: eMXN,
-                tAmount: 100
-            }
-
-            const defiInputs = {
-                aggregator: ZERO_ADDRESS,
-                plugin: ZERO_ADDRESS,
-                feeToken: ZERO_ADDRESS,
-                referrer: ZERO_ADDRESS,
-                referralFee: 0,
-                walletData: '0x',
-                swapData: '0x',
-            }
-
-            await USDC.connect(holder).approve(AmirX, 10);
-            await expect(AmirX.stablecoinSwap(holder, deployer, stableInputs, defiInputs)).to.not.be.reverted;
-            expect(await USDC.balanceOf(deployer)).to.equal(10);
-            expect(await eMXN.balanceOf(holder)).to.equal(100);
-        });
-
-        it("convertFromEXYZ", async () => {
-            await USDC.mintTo(deployer, 10);
-            await USDC.connect(deployer).approve(AmirX, 10);
-            const stableInputs = {
-                destination: holder,
-                origin: eUSD,
-                oAmount: 10,
-                target: USDC,
-                tAmount: 10
-            }
-
-            const defiInputs = {
-                aggregator: ZERO_ADDRESS,
-                plugin: ZERO_ADDRESS,
-                feeToken: ZERO_ADDRESS,
-                referrer: ZERO_ADDRESS,
-                referralFee: 0,
-                walletData: '0x',
-                swapData: '0x',
-            }
-
-            await eUSD.mintTo(holder, 10);
-            await eUSD.connect(holder).approve(AmirX, 10);
-
-            await USDC.connect(holder).approve(AmirX, 10);
-            await expect(AmirX.stablecoinSwap(holder, deployer, stableInputs, defiInputs)).to.not.be.reverted;
-            expect(await eUSD.totalSupply()).to.equal(0);
-            expect(await USDC.balanceOf(deployer)).to.equal(0);
-        });
-
-        describe("defiSwap", () => {
-            beforeEach("setup", async () => {
-                const TestWallet_Factory = await ethers.getContractFactory("TestWallet", deployer);
-                wallet = await TestWallet_Factory.deploy();
-
-                const TestPlugin_Factory = await ethers.getContractFactory("TestPlugin", deployer);
-                plugin = await TestPlugin_Factory.deploy(await telcoin.getAddress());
-
-                const TestAggregator_Factory = await ethers.getContractFactory("TestAggregator", deployer);
-                aggregator = await TestAggregator_Factory.deploy(await telcoin.getAddress());
+                await expect(AmirX.defiToStablecoinSwap(ZERO_ADDRESS, stableInputs, defiInputs)).to.revertedWithCustomError(AmirX, "ZeroValueInput").withArgs("WALLET");
             });
 
             describe("_verifyDefi", () => {
-                it("revert with ZeroValueInput(BUYBACK)", async () => {
-                    const stableInputs = {
-                        destination: ZERO_ADDRESS,
-                        origin: ZERO_ADDRESS,
-                        oAmount: 0,
-                        target: ZERO_ADDRESS,
-                        tAmount: 0
-                    }
-
+                it("ZeroValueInput(BUYBACK)", async () => {
                     const defiInputs = {
+                        defiSafe: ZERO_ADDRESS,
                         aggregator: ZERO_ADDRESS,
                         plugin: ZERO_ADDRESS,
                         feeToken: deployer.address,
@@ -248,23 +159,16 @@ describe("AmirX", () => {
                     }
 
                     //defi.aggregator == address(0)
-                    await expect(AmirX.stablecoinSwap(wallet, holder, stableInputs, defiInputs)).to.revertedWithCustomError(AmirX, "ZeroValueInput").withArgs("BUYBACK");
+                    await expect(AmirX.defiSwap(wallet, defiInputs)).to.revertedWithCustomError(AmirX, "ZeroValueInput").withArgs("BUYBACK");
                     defiInputs.aggregator = deployer.address;
                     //defi.swapData.length == 0
-                    await expect(AmirX.stablecoinSwap(wallet, holder, stableInputs, defiInputs)).to.revertedWithCustomError(AmirX, "ZeroValueInput").withArgs("BUYBACK");
+                    await expect(AmirX.defiSwap(wallet, defiInputs)).to.revertedWithCustomError(AmirX, "ZeroValueInput").withArgs("BUYBACK");
                     defiInputs.swapData = deployer.address;
                 });
 
-                it("revert with ZeroValueInput(PLUGIN)", async () => {
-                    const stableInputs = {
-                        destination: ZERO_ADDRESS,
-                        origin: ZERO_ADDRESS,
-                        oAmount: 0,
-                        target: ZERO_ADDRESS,
-                        tAmount: 0
-                    }
-
+                it("ZeroValueInput(PLUGIN)", async () => {
                     const defiInputs = {
+                        defiSafe: ZERO_ADDRESS,
                         aggregator: deployer.address,
                         plugin: ZERO_ADDRESS,
                         feeToken: await telcoin.getAddress(),
@@ -276,20 +180,166 @@ describe("AmirX", () => {
 
                     //if (defi.feeToken == TELCOIN)
                     //defi.referrer == address(0)
-                    await expect(AmirX.stablecoinSwap(wallet, holder, stableInputs, defiInputs)).to.revertedWithCustomError(AmirX, "ZeroValueInput").withArgs("PLUGIN");
+                    await expect(AmirX.defiSwap(wallet, defiInputs)).to.revertedWithCustomError(AmirX, "ZeroValueInput").withArgs("PLUGIN");
                 });
             });
+        });
 
-            it("wallet call", async () => {
-                const stableInputs = {
-                    destination: ZERO_ADDRESS,
-                    origin: USDC,
-                    oAmount: 0,
-                    target: ZERO_ADDRESS,
-                    tAmount: 0
+        describe("swapping", () => {
+            beforeEach("setup", async () => {
+                await eUSD.grantRole(MINTER_ROLE, deployer);
+            });
+        });
+
+        describe("two steps", () => {
+            it("swap", async () => {
+                await eUSD.mintTo(holder, 15);
+                const stablecoinInputs = {
+                    liquiditySafe: deployer,
+                    destination: holder,
+                    origin: eUSD,
+                    oAmount: 10,
+                    target: eMXN,
+                    tAmount: 100,
+                    stablecoinFeeCurrency: eUSD,
+                    stablecoinFeeSafe: safe.address,
+                    feeAmount: 5
                 }
 
                 const defiInputs = {
+                    defiSafe: deployer,
+                    aggregator: aggregator,
+                    plugin: plugin,
+                    feeToken: USDC,
+                    referrer: ZERO_ADDRESS,
+                    referralFee: 0,
+                    walletData: await wallet.getTestSelector(),
+                    swapData: await aggregator.getSwapSelector(),
+                }
+
+                await eUSD.connect(holder).approve(AmirX, 15);
+                await telcoin.transfer(aggregator, 10);
+
+                await expect(AmirX.swap(holder, true, stablecoinInputs, defiInputs)).to.not.be.reverted;
+
+                expect(await eUSD.totalSupply()).to.equal(5);
+                expect(await eUSD.balanceOf(safe)).to.equal(5);
+                expect(await eMXN.balanceOf(holder)).to.equal(100);
+                expect(await telcoin.balanceOf(deployer)).to.equal(1000);
+            });
+
+            it("swap", async () => {
+                await eUSD.mintTo(holder, 15);
+                const stablecoinInputs = {
+                    liquiditySafe: deployer,
+                    destination: holder,
+                    origin: eUSD,
+                    oAmount: 10,
+                    target: eMXN,
+                    tAmount: 100,
+                    stablecoinFeeCurrency: eUSD,
+                    stablecoinFeeSafe: safe.address,
+                    feeAmount: 5
+                }
+
+                const defiInputs = {
+                    defiSafe: deployer,
+                    aggregator: aggregator,
+                    plugin: plugin,
+                    feeToken: USDC,
+                    referrer: ZERO_ADDRESS,
+                    referralFee: 0,
+                    walletData: await wallet.getTestSelector(),
+                    swapData: await aggregator.getSwapSelector(),
+                }
+
+                await eUSD.connect(holder).approve(AmirX, 15);
+                await telcoin.transfer(aggregator, 10);
+
+                await expect(AmirX.swap(holder, false, stablecoinInputs, defiInputs)).to.not.be.reverted;
+
+                expect(await eUSD.totalSupply()).to.equal(5);
+                expect(await eUSD.balanceOf(safe)).to.equal(5);
+                expect(await eMXN.balanceOf(holder)).to.equal(100);
+                expect(await telcoin.balanceOf(deployer)).to.equal(1000);
+            });
+
+            it("stable to defi", async () => {
+                await eUSD.mintTo(holder, 15);
+                const stablecoinInputs = {
+                    liquiditySafe: deployer,
+                    destination: holder,
+                    origin: eUSD,
+                    oAmount: 10,
+                    target: eMXN,
+                    tAmount: 100,
+                    stablecoinFeeCurrency: eUSD,
+                    stablecoinFeeSafe: safe.address,
+                    feeAmount: 5
+                }
+
+                const defiInputs = {
+                    defiSafe: deployer,
+                    aggregator: aggregator,
+                    plugin: plugin,
+                    feeToken: USDC,
+                    referrer: ZERO_ADDRESS,
+                    referralFee: 0,
+                    walletData: await wallet.getTestSelector(),
+                    swapData: await aggregator.getSwapSelector(),
+                }
+
+                await eUSD.connect(holder).approve(AmirX, 15);
+                await telcoin.transfer(aggregator, 10);
+
+                await expect(AmirX.stablecoinToDefiSwap(holder, stablecoinInputs, defiInputs)).to.not.be.reverted;
+
+                expect(await eUSD.totalSupply()).to.equal(5);
+                expect(await eUSD.balanceOf(safe)).to.equal(5);
+                expect(await eMXN.balanceOf(holder)).to.equal(100);
+                expect(await telcoin.balanceOf(deployer)).to.equal(1000);
+            });
+
+            it("defi to stable", async () => {
+                await eUSD.mintTo(holder, 15);
+                const stablecoinInputs = {
+                    liquiditySafe: deployer,
+                    destination: holder,
+                    origin: eUSD,
+                    oAmount: 10,
+                    target: eMXN,
+                    tAmount: 100,
+                    stablecoinFeeCurrency: eUSD,
+                    stablecoinFeeSafe: safe.address,
+                    feeAmount: 5
+                }
+
+                const defiInputs = {
+                    defiSafe: deployer,
+                    aggregator: aggregator,
+                    plugin: plugin,
+                    feeToken: USDC,
+                    referrer: ZERO_ADDRESS,
+                    referralFee: 0,
+                    walletData: await wallet.getTestSelector(),
+                    swapData: await aggregator.getSwapSelector(),
+                }
+
+                await eUSD.connect(holder).approve(AmirX, 15);
+                await telcoin.transfer(aggregator, 10);
+
+                await expect(AmirX.defiToStablecoinSwap(holder, stablecoinInputs, defiInputs)).to.not.be.reverted;
+
+                expect(await eUSD.balanceOf(safe)).to.equal(5);
+                expect(await eMXN.balanceOf(holder)).to.equal(100);
+                expect(await telcoin.balanceOf(deployer)).to.equal(1000);
+            });
+        });
+
+        describe("defiSwap", () => {
+            it("wallet call", async () => {
+                const defiInputs = {
+                    defiSafe: ZERO_ADDRESS,
                     aggregator: ZERO_ADDRESS,
                     plugin: ZERO_ADDRESS,
                     feeToken: await telcoin.getAddress(),
@@ -300,20 +350,13 @@ describe("AmirX", () => {
                 }
 
                 await telcoin.approve(AmirX, 10);
-                await expect(AmirX.stablecoinSwap(holder, deployer, stableInputs, defiInputs)).to.not.be.reverted;
+                await expect(AmirX.defiSwap(holder, defiInputs)).to.not.be.reverted;
                 expect(await telcoin.balanceOf(deployer)).to.equal(1000);
             });
 
             it("_feeDispersal", async () => {
-                const stableInputs = {
-                    destination: ZERO_ADDRESS,
-                    origin: USDC,
-                    oAmount: 0,
-                    target: ZERO_ADDRESS,
-                    tAmount: 0
-                }
-
                 const defiInputs = {
+                    defiSafe: ZERO_ADDRESS,
                     aggregator: ZERO_ADDRESS,
                     plugin: plugin,
                     feeToken: await telcoin.getAddress(),
@@ -323,45 +366,31 @@ describe("AmirX", () => {
                     swapData: '0x',
                 }
 
-                await telcoin.approve(AmirX, 10);
-                await expect(AmirX.stablecoinSwap(holder, deployer, stableInputs, defiInputs)).to.not.be.reverted;
+                await telcoin.transfer(AmirX, 10);
+                await expect(AmirX.defiSwap(holder, defiInputs)).to.not.be.reverted;
                 expect(await telcoin.balanceOf(plugin)).to.equal(10);
             });
 
-            it("_buyBack with MATIC", async () => {
-                const stableInputs = {
-                    destination: ZERO_ADDRESS,
-                    origin: USDC,
-                    oAmount: 0,
-                    target: ZERO_ADDRESS,
-                    tAmount: 0
-                }
-
+            it("_buyBack with POL", async () => {
                 const defiInputs = {
+                    defiSafe: deployer,
                     aggregator: aggregator,
                     plugin: plugin,
-                    feeToken: MATIC_ADDRESS,
+                    feeToken: POL_ADDRESS,
                     referrer: ZERO_ADDRESS,
                     referralFee: 0,
                     walletData: await wallet.getTestSelector(),
-                    swapData: await aggregator.getMATICSwapSelector(),
+                    swapData: await aggregator.getSwapSelector(),
                 }
 
                 await telcoin.transfer(aggregator, 10);
-                await expect(AmirX.stablecoinSwap(holder, deployer, stableInputs, defiInputs)).to.not.be.reverted;
+                await expect(AmirX.defiSwap(holder, defiInputs)).to.not.be.reverted;
                 expect(await telcoin.balanceOf(deployer)).to.equal(1000);
             });
 
             it("_buyBack wtih ERC20", async () => {
-                const stableInputs = {
-                    destination: ZERO_ADDRESS,
-                    origin: USDC,
-                    oAmount: 0,
-                    target: ZERO_ADDRESS,
-                    tAmount: 0
-                }
-
                 const defiInputs = {
+                    defiSafe: deployer,
                     aggregator: aggregator,
                     plugin: plugin,
                     feeToken: USDC,
@@ -372,7 +401,7 @@ describe("AmirX", () => {
                 }
 
                 await telcoin.transfer(aggregator, 10);
-                await expect(AmirX.stablecoinSwap(holder, deployer, stableInputs, defiInputs)).to.not.be.reverted;
+                await expect(AmirX.defiSwap(holder, defiInputs)).to.not.be.reverted;
                 expect(await telcoin.balanceOf(deployer)).to.equal(1000);
             });
         });
@@ -386,13 +415,13 @@ describe("AmirX", () => {
             await AmirX.grantRole(SUPPORT_ROLE, deployer);
         });
 
-        it("MATIC insufficient balance", async () => {
-            await expect(AmirX.rescueCrypto(MATIC_ADDRESS, 101)).to.be.revertedWith("AmirX: MATIC send failed");
+        it("POL insufficient balance", async () => {
+            await expect(AmirX.rescueCrypto(POL_ADDRESS, 10100000)).to.be.revertedWith("AmirX: POL send failed");
         });
 
-        it("MATIC", async () => {
+        it("POL", async () => {
             deployer.sendTransaction({ value: 101, to: await AmirX.getAddress() });
-            await expect(AmirX.rescueCrypto(MATIC_ADDRESS, 101)).to.not.be.reverted;
+            await expect(AmirX.rescueCrypto(POL_ADDRESS, 101)).to.not.be.reverted;
         });
 
         it("ERC20", async () => {

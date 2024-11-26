@@ -19,6 +19,8 @@ abstract contract StablecoinHandler is
     using SafeERC20 for ERC20PermitUpgradeable;
 
     struct StablecoinSwap {
+        // address provides intermediary stablecoin or eXYZs that are not mintable
+        address liquiditySafe;
         // recipient of the target currency
         address destination;
         // the originating currency
@@ -29,6 +31,12 @@ abstract contract StablecoinHandler is
         address target;
         // the amount of currency to be provided
         uint256 tAmount;
+        // currency that the fee should be paid out in
+        address stablecoinFeeCurrency;
+        // deposit address for stablecoin fee
+        address stablecoinFeeSafe;
+        // stablecoin fee amount
+        uint256 feeAmount;
     }
 
     struct eXYZ {
@@ -67,7 +75,7 @@ abstract contract StablecoinHandler is
     // revert with zero value
     error ZeroValueInput(string value);
     // revert with mint/burn action outside of range
-    error InvalidMintBurnBoundry(address token);
+    error InvalidMintBurnBoundry(address token, uint256 amount);
 
     // status change to eXYZ
     event XYZUpdated(address token, bool validity, uint256 max, uint256 min);
@@ -93,97 +101,127 @@ abstract contract StablecoinHandler is
      * @param ss The stablecoin swap details including origin, target, and amounts.
      */
     modifier nonZero(StablecoinSwap memory ss) {
-        if (
-            ss.destination == address(0) ||
-            ss.origin == address(0) ||
-            ss.oAmount == 0 ||
-            ss.target == address(0) ||
-            ss.tAmount == 0
-        ) revert ZeroValueInput("SS");
+        if (ss.origin == address(0)) revert ZeroValueInput("ORIGIN CURRENCY");
+        if (ss.oAmount == 0) revert ZeroValueInput("ORIGIN AMOUNT");
+        if (ss.destination == address(0)) revert ZeroValueInput("DESTINATION");
+        if (ss.target == address(0)) revert ZeroValueInput("TARGET CURRENCY");
+        if (ss.tAmount == 0) revert ZeroValueInput("TARGET AMOUNT");
         _;
     }
 
     /************************************************
-     *   supply functions
+     *   swap function
      ************************************************/
 
     /**
-     * @notice Swaps and sends stablecoins according to specified parameters, enforcing role and pause state.
-     * @dev Only callable by addresses with the SWAPPER_ROLE and when the contract is not paused.
-     * @param wallet The wallet address from which tokens will be burned.
-     * @param ss The stablecoin swap details, including source, target, and amounts.
+     * @notice Initiates the stablecoin swap process, moving funds between origin and target currencies.
+     * @dev Verifies the swap parameters and invokes the internal function to execute the swap.
+     * This function is only accessible to accounts with the SWAPPER_ROLE and when the contract is not paused.
+     * @param wallet The address of the user initiating the swap.
+     * @param ss The StablecoinSwap structure containing the swap details (origin, target, amounts, fees, etc.).
      */
-    function swapAndSend(
+    function stablecoinSwap(
         address wallet,
         StablecoinSwap memory ss
-    ) public virtual whenNotPaused nonZero(ss) onlyRole(SWAPPER_ROLE) {
-        if (
-            Stablecoin(ss.origin).totalSupply() - ss.oAmount <
-            getMinLimit(ss.origin)
-        ) revert InvalidMintBurnBoundry(ss.origin);
-
-        if (
-            Stablecoin(ss.target).totalSupply() + ss.tAmount >
-            getMaxLimit(ss.target)
-        ) revert InvalidMintBurnBoundry(ss.target);
-
-        Stablecoin(ss.origin).burnFrom(wallet, ss.oAmount);
-        Stablecoin(ss.target).mintTo(ss.destination, ss.tAmount);
-    }
-
-    /**
-     * @notice Converts assets to an external XYZ token with specified parameters.
-     * @dev Ensures the operation is performed according to the roles and pause state, transferring from a wallet to a safe address.
-     * @param wallet The wallet address from which tokens will be transferred.
-     * @param safe The safe address to receive the origin tokens.
-     * @param ss The stablecoin swap details.
-     */
-    function convertToEXYZ(
-        address wallet,
-        address safe,
-        StablecoinSwap memory ss
-    ) public virtual whenNotPaused nonZero(ss) onlyRole(SWAPPER_ROLE) {
-        if (
-            Stablecoin(ss.target).totalSupply() + ss.tAmount >
-            getMaxLimit(ss.target)
-        ) revert InvalidMintBurnBoundry(ss.target);
-
-        ERC20PermitUpgradeable(ss.origin).safeTransferFrom(
-            wallet,
-            safe,
-            ss.oAmount
-        );
-        Stablecoin(ss.target).mintTo(ss.destination, ss.tAmount);
-    }
-
-    /**
-     * @notice Converts from an external XYZ token to another asset as specified.
-     * @dev Operates within the constraints of roles and the contract's paused state, facilitating the conversion process.
-     * @param wallet The wallet address from which tokens will be burned.
-     * @param safe The safe address from which target tokens will be sent.
-     * @param ss The details of the stablecoin swap operation.
-     */
-    function convertFromEXYZ(
-        address wallet,
-        address safe,
-        StablecoinSwap memory ss
-    ) public virtual whenNotPaused nonZero(ss) onlyRole(SWAPPER_ROLE) {
-        if (
-            Stablecoin(ss.origin).totalSupply() - ss.oAmount <
-            getMinLimit(ss.origin)
-        ) revert InvalidMintBurnBoundry(ss.origin);
-
-        Stablecoin(ss.origin).burnFrom(wallet, ss.oAmount);
-        ERC20PermitUpgradeable(ss.target).safeTransferFrom(
-            safe,
-            ss.destination,
-            ss.tAmount
-        );
+    ) external onlyRole(SWAPPER_ROLE) whenNotPaused {
+        // Verify the swap details before proceeding with the operation.
+        _verifyStablecoinSwap(wallet, ss);
+        // Perform the stablecoin swap after validation.
+        _stablecoinSwap(wallet, ss);
     }
 
     /************************************************
-     *   read functions
+     *   internal functions
      ************************************************/
+
+    /**
+     * @notice Handles the internal execution of the stablecoin swap, transferring tokens between the origin and target.
+     * @dev This function manages fee deduction, burns/mints tokens when required, and performs transfers for both origin and target.
+     * It supports both external XYZ tokens and other ERC20 tokens.
+     * @param wallet The address of the user initiating the swap.
+     * @param ss The StablecoinSwap structure with all the details for executing the swap.
+     */
+    function _stablecoinSwap(
+        address wallet,
+        StablecoinSwap memory ss
+    ) internal {
+        if (
+            ss.stablecoinFeeCurrency != address(0) &&
+            ss.stablecoinFeeSafe != address(0)
+        )
+            ERC20PermitUpgradeable(ss.stablecoinFeeCurrency).safeTransferFrom(
+                wallet,
+                ss.stablecoinFeeSafe,
+                ss.feeAmount
+            );
+
+        // Handle the transfer or burning of the origin currency:
+        // If the origin is a recognized stablecoin (XYZ), burn the specified amount from the wallet.
+        if (isXYZ(ss.origin)) {
+            Stablecoin(ss.origin).burnFrom(wallet, ss.oAmount);
+        } else {
+            ERC20PermitUpgradeable(ss.origin).safeTransferFrom(
+                wallet,
+                ss.liquiditySafe,
+                ss.oAmount
+            );
+        }
+
+        // Handle the minting or transferring of the target currency:
+        // If the target is a recognized stablecoin (XYZ), mint the required amount to the destination address.
+        if (isXYZ(ss.target)) {
+            Stablecoin(ss.target).mintTo(ss.destination, ss.tAmount);
+        } else {
+            ERC20PermitUpgradeable(ss.target).safeTransferFrom(
+                ss.liquiditySafe,
+                ss.destination,
+                ss.tAmount
+            );
+        }
+    }
+
+    /************************************************
+     *   view functions
+     ************************************************/
+
+    /**
+     * @notice Validates the parameters of the stablecoin swap, ensuring non-zero values and proper minting/burning limits.
+     * @dev This function checks that all inputs are valid, verifies limits for minting and burning of XYZ tokens,
+     * and confirms liquidity safe addresses for ERC20 tokens.
+     * @param wallet The address of the user initiating the swap.
+     * @param ss The StablecoinSwap structure with all swap details (origin, target, amounts, fees, etc.).
+     */
+    function _verifyStablecoinSwap(
+        address wallet,
+        StablecoinSwap memory ss
+    ) internal view nonZero(ss) {
+        // Ensure the wallet address is not zero.
+        if (wallet == address(0)) revert ZeroValueInput("WALLET");
+
+        // For the origin currency:
+        if (isXYZ(ss.origin)) {
+            // Ensure the total supply does not drop below the minimum limit after burning the specified amount.
+            if (
+                Stablecoin(ss.origin).totalSupply() - ss.oAmount <
+                getMinLimit(ss.origin)
+            ) revert InvalidMintBurnBoundry(ss.origin, ss.oAmount);
+        } else if (ss.liquiditySafe == address(0)) {
+            // Ensure the liquidity safe is provided for ERC20 origin tokens.
+            revert ZeroValueInput("LIQUIDITY SAFE");
+        }
+
+        // For the target currency:
+        if (isXYZ(ss.target)) {
+            // Ensure the total supply does not exceed the maximum limit after minting the specified amount.
+            if (
+                Stablecoin(ss.target).totalSupply() + ss.tAmount >
+                getMaxLimit(ss.target)
+            ) revert InvalidMintBurnBoundry(ss.target, ss.tAmount);
+        } else if (ss.liquiditySafe == address(0)) {
+            // Ensure the liquidity safe is provided for ERC20 target tokens.
+            revert ZeroValueInput("LIQUIDITY SAFE");
+        }
+    }
 
     /**
      * @notice Checks if a given token address is recognized as a valid external XYZ token.
@@ -245,7 +283,7 @@ abstract contract StablecoinHandler is
         bool validity,
         uint256 maxLimit,
         uint256 minLimit
-    ) public virtual onlyRole(MAINTAINER_ROLE) {
+    ) external virtual onlyRole(MAINTAINER_ROLE) {
         require(
             maxLimit > minLimit,
             "StablecoinHandler: upperbound must be greater than lowerbound"
