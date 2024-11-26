@@ -1,6 +1,6 @@
 {
   "name": "telcoin-contracts",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Protocol contracts that are part of the Telcoin application's blockchain infrastructure",
   "main": "index.js",
   "scripts": {
@@ -22,8 +22,8 @@
   },
   "homepage": "https://github.com/telcoin/telcoin-contracts#readme",
   "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
-    "hardhat": "^2.21.0",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.16",
     "solidity-docgen": "^0.6.0-beta.36"
   },
   "dependencies": {
