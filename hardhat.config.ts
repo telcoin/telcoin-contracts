@@ -1,6 +1,5 @@
 import type { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
-import 'solidity-docgen';
 
 /** @type import('hardhat/config').HardhatUserConfig */
 const config: HardhatUserConfig = {

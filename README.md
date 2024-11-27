@@ -1,8 +1,7 @@
 # telcoin-contracts
 
-
-[![NPM Package](https://img.shields.io/badge/npm-1.0.0-blue)](https://www.npmjs.com/package/telcoin-contracts)
-![hardhat](https://img.shields.io/badge/hardhat-2.21.0-blue)
+[![NPM Package](https://img.shields.io/badge/npm-1.0.1-blue)](https://www.npmjs.com/package/telcoin-contracts)
+![hardhat](https://img.shields.io/badge/hardhat-2.22.16-blue)
 ![node](https://img.shields.io/badge/node-v20.11.1-brightgreen.svg)
 ![solidity](https://img.shields.io/badge/solidity-0.8.24-red)
 ![OpenZeppelin](https://img.shields.io/badge/OpenZeppelin-^5.0.1-brightgreen.svg)

@@ -40,36 +40,38 @@ Customizable decimal places for token precision.
 
 ### `StablecoinHandler`
 
-A contract for managing the operations related to stablecoins, including swapping between different stablecoin types and converting to/from external XYZ tokens.
+An abstract contract that handles the minting, burning, and swapping of stablecoins. It manages interactions between stablecoins and external tokens (`eXYZ`) while incorporating strict controls on minting and burning limits.
 
-#### Key StablecoinHandler Features
+#### Key Features
 
-Swap functionality to exchange between different stablecoins or external XYZ tokens.
+- **Stablecoin Swaps**: Facilitates swapping between different stablecoins and external tokens.
+- **Minting and Burning**: Enforces limits for minting and burning of external tokens.
+- **Role-Based Access Control**: Restricts sensitive operations to authorized roles (e.g., `SWAPPER_ROLE`, `PAUSER_ROLE`, `MAINTAINER_ROLE`).
+- **Pausable Operations**: Ensures contract functionality can be paused and resumed as needed.
 
-Conversion operations to handle the minting and burning processes during token swaps.
+#### Events
 
-Role-based access control for managing operations and pausing/unpausing the contract.
+- `XYZUpdated(address token, bool validity, uint256 max, uint256 min)`: Emitted when the configuration for an external `eXYZ` token is updated.
 
-##### StablecoinHandler-Events
+#### Functions
 
-`XYZUpdated(address token, bool validity, uint256 max, uint256 min)`: Emitted when an external XYZ token's configuration is updated.
+- **`stablecoinSwap(address wallet, StablecoinSwap memory ss)`**  
+  Initiates a stablecoin swap, validating the swap parameters and executing the operation.
 
-#### StablecoinHandler-Functions
+- **`isXYZ(address token)`**  
+  Checks if a token is a valid external `eXYZ` token.
 
-`swapAndSend(address wallet, StablecoinSwap memory ss)`: Swaps stablecoins according to specified parameters, enforcing role and pause state. Only callable by SWAPPER_ROLE when not paused.
+- **`getMaxLimit(address token)`**  
+  Retrieves the maximum supply limit for a given token.
 
-`convertToEXYZ(address wallet, address safe, StablecoinSwap memory ss)`: Converts assets to an external XYZ token, ensuring the operation is within supply limits and only callable by SWAPPER_ROLE.
+- **`getMinLimit(address token)`**  
+  Retrieves the minimum supply limit for a given token.
 
-`convertFromEXYZ(address wallet, address safe, StablecoinSwap memory ss)`: Converts from an external XYZ token to another asset, observing supply constraints and only callable by SWAPPER_ROLE.
+- **`UpdateXYZ(address token, bool validity, uint256 maxLimit, uint256 minLimit)`**  
+  Updates the validity and supply limits of an external `eXYZ` token.
 
-`isXYZ(address token)`: Checks if a given token address is a valid external XYZ token.
+- **`pause()`**  
+  Pauses the contract's operations.
 
-`getMaxLimit(address token)`: Retrieves the maximum supply limit for a specified external XYZ token.
-
-`getMinLimit(address token)`: Retrieves the minimum supply limit for a specified external XYZ token.
-
-`UpdateXYZ(address token, bool validity, uint256 maxLimit, uint256 minLimit)`: Updates the configuration for an external XYZ token, including its validity and supply limits. Restricted to MAINTAINER_ROLE.
-
-`pause()`: Pauses all pause-sensitive operations, can only be called by PAUSER_ROLE.
-
-`unpause()`: Unpauses the contract, allowing previously paused operations to resume. Also restricted to PAUSER_ROLE.
+- **`unpause()`**  
+  Resumes the contract's operations.

@@ -10,18 +10,86 @@ This documentation provides insights into the AmirX contract and the ISimplePlug
 
 `increaseClaimableBy(address account, uint256 amount)`: Allows increasing the claimable balance of account by amount, indicating rewards or referral fees. Returns a boolean value indicating success.
 
-### `AmirX`
+## `AmirX`
 
-Extends the StablecoinHandler contract to implement a DeFi swap and fee buyback mechanism. It manages token swaps and utilizes collected fees for buyback operations, supporting both ERC20 tokens and native MATIC.
+Extends `StablecoinHandler` to provide DeFi swap and fee buyback functionality. The `AmirX` contract integrates with swap aggregators and referral plugins to execute swaps and buybacks, supporting both ERC20 tokens and native POL tokens.
 
-#### Key StablecoinHandler Features
+### Key Features
 
-`DefiSwap`: Contains details for performing DeFi swaps, including the swap aggregator or router, referral plugin, fee token, referrer, referral fee, and data for wallet interaction and swap execution.
+- **DeFi Swaps**: Facilitates DeFi swaps, including token buybacks and fee management.
+- **Referral Rewards**: Supports referral fee handling through plugins.
+- **Fee Buybacks**: Automates buyback of fees using swap aggregators.
+- **Role-Based Access**: Restricts operations to authorized roles such as `SWAPPER_ROLE` and `SUPPORT_ROLE`.
 
-#### StablecoinHandler-Functions
+### Events
 
-`stablecoinSwap(address wallet, address safe, StablecoinSwap memory ss, DefiSwap memory defi)`: Manages stablecoin swaps and triggers DeFi swap operations based on the provided DefiSwap details.
+- Inherits all events from `StablecoinHandler`.
 
-`defiSwap(address wallet, address safe, DefiSwap memory defi)`: Executes a DeFi swap using the specified DefiSwap details, handling fee dispersal as part of the process.
+### Functions
 
-`rescueCrypto(ERC20 token, uint256 amount)`: Allows for the rescue of crypto assets mistakenly sent to the contract, handling both ERC20 tokens and native MATIC.
+- **`swap(address wallet, bool directional, StablecoinSwap memory ss, DefiSwap memory defi)`**  
+  Executes a combination of stablecoin and DeFi swaps based on the specified parameters.
+
+- **`defiToStablecoinSwap(address wallet, StablecoinSwap memory ss, DefiSwap memory defi)`**  
+  Performs a DeFi swap followed by a stablecoin swap.
+
+- **`stablecoinToDefiSwap(address wallet, StablecoinSwap memory ss, DefiSwap memory defi)`**  
+  Executes a stablecoin swap followed by a DeFi swap.
+
+- **`defiSwap(address wallet, DefiSwap memory defi)`**  
+  Executes a standalone DeFi swap.
+
+- **`rescueCrypto(ERC20 token, uint256 amount)`**  
+  Recovers mistakenly sent crypto assets, supporting both ERC20 and native POL tokens.
+
+---
+
+### Structures
+
+#### StablecoinSwap
+
+- **`liquiditySafe`**: Address used for intermediary stablecoins or `eXYZs` that are not mintable.
+- **`destination`**: Recipient address for the target currency.
+- **`origin`**: The originating currency.
+- **`oAmount`**: The amount of the originating currency.
+- **`target`**: The target currency.
+- **`tAmount`**: The amount of the target currency.
+- **`stablecoinFeeCurrency`**: Currency used to pay fees.
+- **`stablecoinFeeSafe`**: Address where the stablecoin fee is deposited.
+- **`feeAmount`**: The amount of the fee.
+
+#### DefiSwap
+
+- **`defiSafe`**: Address for depositing fees.
+- **`aggregator`**: Address of the swap aggregator or router.
+- **`plugin`**: Referral plugin for fee distribution.
+- **`feeToken`**: Token used for fees.
+- **`referrer`**: Address receiving referral fees.
+- **`referralFee`**: Amount of referral fee.
+- **`walletData`**: Data for user wallet interaction.
+- **`swapData`**: Data for performing the swap.
+
+---
+
+### Usage Scenarios
+
+#### Swapping Stablecoins
+
+The `stablecoinSwap` function ensures seamless exchange of stablecoins or external tokens while verifying the minting and burning constraints.
+
+#### DeFi Swaps with Fee Buybacks
+
+The `defiSwap` function allows for executing swaps using an aggregator, with automated fee buyback and referral rewards handled by the contract.
+
+#### Combined Swaps
+
+The `swap` function enables a mix of stablecoin and DeFi swaps, with directional control for the sequence of operations.
+
+---
+
+### Role Definitions
+
+- **`PAUSER_ROLE`**: Can pause and unpause the contract.
+- **`SWAPPER_ROLE`**: Authorized to perform swaps and manage token movements.
+- **`MAINTAINER_ROLE`**: Manages updates to token configurations and limits.
+- **`SUPPORT_ROLE`**: Allows recovery of mistakenly sent tokens.
