@@ -10,6 +10,8 @@
 
 **Telcoin** is designed to complement telecom, mobile money, and e-wallet partners globally with both traditional fiat and blockchain transaction rails that underpin our fast and affordable digital financial service offerings. Telcoin combines the best parts of the burgeoning DeFi ecosystem with our compliance-first approach to each market, ensuring that the company takes on a fraction of traditional financial counter-party, execution, and custody risks.
 
+For more information regarding security, please visit our [Resource Site](https://trust.telco.in)!
+
 ## Installation
 
 ## Hardhat (npm)
